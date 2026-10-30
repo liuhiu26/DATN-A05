@@ -1,0 +1,61 @@
+// Grafana Alloy: thu log từ 3 nguồn và đẩy vào Loki.
+//   job="hrdocs-api" : log ứng dụng FastAPI theo log schema (file JSON Lines trên volume app-logs)
+//   job="kong"       : log HTTP của API Gateway (plugin file-log -> stdout container kong)
+//   job="opa"        : decision log của OPA (stdout container opa)
+
+// ---------- 1. Log ứng dụng (đúng schema chốt với TV3) ----------
+local.file_match "hrdocs_api" {
+  path_targets = [{"__path__" = "/var/log/hrdocs/*.jsonl", "job" = "hrdocs-api"}]
+}
+
+loki.source.file "hrdocs_api" {
+  targets    = local.file_match.hrdocs_api.targets
+  forward_to = [loki.process.hrdocs_api.receiver]
+}
+
+loki.process "hrdocs_api" {
+  stage.json {
+    expressions = { ts = "timestamp", decision = "", policy_rule = "", method = "" }
+  }
+  stage.timestamp {
+    source = "ts"
+    format = "RFC3339"
+  }
+  // Nhãn ít giá trị để lọc nhanh; các trường còn lại truy vấn bằng `| json`.
+  stage.labels {
+    values = { decision = "", policy_rule = "", method = "" }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+// ---------- 2. Kong + OPA: đọc stdout container qua Docker API ----------
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "gateway_and_pdp" {
+  targets = discovery.docker.containers.targets
+
+  // chỉ lấy container có label hrdocs.logs=true (kong, opa trong docker-compose.yml)
+  rule {
+    source_labels = ["__meta_docker_container_label_hrdocs_logs"]
+    regex         = "true"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "job"
+  }
+}
+
+loki.source.docker "gateway_and_pdp" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.gateway_and_pdp.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

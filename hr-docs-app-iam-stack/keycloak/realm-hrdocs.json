@@ -1,0 +1,371 @@
+{
+  "realm": "hrdocs",
+  "displayName": "HR Docs",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "permanentLockout": false,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "passwordPolicy": "length(8) and notUsername",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Quản trị hệ thống HR Docs"
+      },
+      {
+        "name": "manager",
+        "description": "Trưởng phòng ban"
+      },
+      {
+        "name": "employee",
+        "description": "Nhân viên"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "IT",
+      "path": "/IT",
+      "attributes": {
+        "displayName": [
+          "Công nghệ thông tin"
+        ]
+      }
+    },
+    {
+      "name": "HR",
+      "path": "/HR",
+      "attributes": {
+        "displayName": [
+          "Nhân sự"
+        ]
+      }
+    },
+    {
+      "name": "SALES",
+      "path": "/SALES",
+      "attributes": {
+        "displayName": [
+          "Kinh doanh"
+        ]
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "hrdocs-web",
+      "name": "HR Docs web (React)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:8000/api/docs/oauth2-redirect"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:8000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience hrdocs-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "hrdocs-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "department (group)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "department",
+            "full.path": "false",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "hrdocs-cli",
+      "name": "HR Docs CLI / test script (password grant – chỉ dùng trong lab)",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "audience hrdocs-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "hrdocs-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "department (group)",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "department",
+            "full.path": "false",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "multivalued": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "hrdocs-backend",
+      "name": "HR Docs API service account (Keycloak Admin API)",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${HRDOCS_BACKEND_CLIENT_SECRET:change-me-backend-secret}",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "username": "admin",
+      "email": "admin@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Viên",
+      "lastName": "Quản Trị",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "admin"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000002",
+      "username": "it.manager",
+      "email": "it.manager@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Minh",
+      "lastName": "Trần Văn",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "manager"
+      ],
+      "groups": [
+        "/IT"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000003",
+      "username": "alice",
+      "email": "alice@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "An",
+      "lastName": "Nguyễn Thị",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "employee"
+      ],
+      "groups": [
+        "/IT"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000004",
+      "username": "bob",
+      "email": "bob@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Bình",
+      "lastName": "Lê Văn",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "employee"
+      ],
+      "groups": [
+        "/IT"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000005",
+      "username": "hr.manager",
+      "email": "hr.manager@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Hà",
+      "lastName": "Phạm Thu",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "manager"
+      ],
+      "groups": [
+        "/HR"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000006",
+      "username": "carol",
+      "email": "carol@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Châu",
+      "lastName": "Hoàng Minh",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "employee"
+      ],
+      "groups": [
+        "/HR"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000007",
+      "username": "sales.manager",
+      "email": "sales.manager@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Dũng",
+      "lastName": "Đỗ Quang",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "manager"
+      ],
+      "groups": [
+        "/SALES"
+      ]
+    },
+    {
+      "id": "a0000000-0000-4000-8000-000000000008",
+      "username": "dave",
+      "email": "dave@corp.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Duy",
+      "lastName": "Vũ Đức",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Password123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-hrdocs",
+        "employee"
+      ],
+      "groups": [
+        "/SALES"
+      ]
+    },
+    {
+      "username": "service-account-hrdocs-backend",
+      "enabled": true,
+      "serviceAccountClientId": "hrdocs-backend",
+      "realmRoles": [
+        "default-roles-hrdocs"
+      ],
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "query-groups",
+          "view-realm"
+        ]
+      }
+    }
+  ]
+}

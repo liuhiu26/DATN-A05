@@ -1,0 +1,79 @@
+# Kong DB-less (declarative). File này là TEMPLATE: config-init (config-init/render.py) điền
+# issuer, public key RS256 (lấy từ realm Keycloak lúc khởi động) và dải IP nội bộ (INTERNAL_CIDRS trong .env)
+# rồi ghi ra kong.yml cho container kong.
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: hrdocs-api
+    url: http://api:8000
+    connect_timeout: 5000
+    read_timeout: 30000
+    routes:
+      - name: api-public            # không cần token: health check + tài liệu OpenAPI
+        paths: [/api/health, /api/docs, /api/openapi.json]
+        strip_path: false
+      - name: api                   # mọi API còn lại: bắt buộc JWT hợp lệ
+        paths: [/api]
+        strip_path: false
+        plugins:
+          # Plugin JWT: kiểm chữ ký RS256 bằng public key của realm Keycloak + hạn token (exp).
+          # key_claim_name=iss -> Kong tìm consumer có jwt_secret.key == iss của token.
+          - &jwt
+            name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify: [exp]
+              maximum_expiration: 3600
+              header_names: [authorization]
+              uri_param_names: []
+              cookie_names: []
+              run_on_preflight: false
+      - name: api-admin             # POST /admin/users, GET /admin/audit
+        paths: [/api/admin]
+        strip_path: false
+        plugins:
+          - *jwt
+          # R5 ở tầng gateway (defense in depth): chỉ cho phép từ dải IP nội bộ.
+          - &internal_only
+            name: ip-restriction
+            config:
+              allow: ${INTERNAL_CIDRS_YAML}
+              status: 403
+              message: "R5_INTERNAL_IP: chi cho phep tu dai IP noi bo"
+      - name: api-document-delete   # DELETE /documents/{id}
+        paths: ["~/api/documents/[^/]+$"]
+        methods: [DELETE]
+        strip_path: false
+        plugins: [*jwt, *internal_only]
+
+consumers:
+  - username: keycloak-realm-hrdocs
+    jwt_secrets:
+      - key: "${KEYCLOAK_ISSUER}"
+        algorithm: RS256
+        rsa_public_key: |
+${KEYCLOAK_PUBLIC_KEY}
+
+plugins:
+  # Mỗi request một X-Request-Id; FastAPI dùng lại làm request_id để nối log Kong <-> log ứng dụng.
+  - name: correlation-id
+    config:
+      header_name: X-Request-Id
+      generator: uuid
+      echo_downstream: true
+  # Log HTTP của gateway dạng JSON ra stdout -> Grafana Alloy -> Loki (job="kong").
+  # Bỏ header Authorization khỏi log để token không nằm trong kho log.
+  - name: file-log
+    config:
+      path: /dev/stdout
+      reopen: false
+      custom_fields_by_lua:
+        request.headers.authorization: "return nil"
+        request.headers.cookie: "return nil"
+  # Chống dò quét/brute force đơn giản theo IP.
+  - name: rate-limiting
+    config:
+      minute: 600
+      policy: local
+      limit_by: ip

@@ -1,0 +1,33 @@
+p, profile:read, True, allow, AUTHENTICATED
+p, document:list, True, allow, AUTHENTICATED
+p, document:create, True, allow, AUTHENTICATED
+p, employee:list, True, allow, AUTHENTICATED
+p, department:list, True, allow, AUTHENTICATED
+p, document:read, r.obj.classification == 'confidential' and not r.env.working_hours, deny, R3_CONFIDENTIAL_HOURS
+p, document:read, r.sub.role == 'admin', allow, RBAC_ADMIN
+p, document:read, r.sub.id == r.obj.owner_id, allow, R1_OWNER
+p, document:read, r.sub.role == 'manager' and r.sub.department != '' and r.sub.department == r.obj.department, allow, R2_DEPT_MANAGER
+p, document:read, True, deny, DEFAULT_DENY
+p, document:update, r.sub.role == 'admin', allow, RBAC_ADMIN
+p, document:update, r.sub.id == r.obj.owner_id, allow, R1_OWNER
+p, document:update, True, deny, R1_OWNER
+p, document:delete, r.sub.role != 'admin', deny, RBAC_ADMIN
+p, document:delete, not r.env.internal_ip, deny, R5_INTERNAL_IP
+p, document:delete, True, allow, RBAC_ADMIN
+p, employee:read, r.sub.role == 'admin', allow, RBAC_ADMIN
+p, employee:read, r.sub.id == r.obj.id, allow, EMP_SELF
+p, employee:read, r.sub.role == 'manager' and r.sub.department != '' and r.sub.department == r.obj.department, allow, EMP_DEPT_MANAGER
+p, employee:read, True, deny, DEFAULT_DENY
+p, employee:update, r.sub.id == r.obj.id and r.env.touches_protected, deny, R4_NO_SELF_ROLE_SALARY
+p, employee:update, r.sub.role == 'admin' and r.env.fields_admin_ok, allow, RBAC_ADMIN
+p, employee:update, r.sub.role == 'admin', deny, EMP_FIELD_ALLOWLIST
+p, employee:update, r.sub.id == r.obj.id and r.env.fields_self_ok, allow, EMP_SELF
+p, employee:update, r.sub.id == r.obj.id, deny, EMP_FIELD_ALLOWLIST
+p, employee:update, True, deny, DEFAULT_DENY
+p, department:report, r.sub.role == 'admin', allow, RBAC_ADMIN
+p, department:report, r.sub.role == 'manager' and r.sub.department != '' and r.sub.department == r.obj.department and r.obj.manager_id == r.sub.id, allow, R6_DEPT_REPORT
+p, department:report, r.sub.role == 'manager', deny, R6_DEPT_REPORT
+p, department:report, True, deny, DEFAULT_DENY
+p, admin:access, r.sub.role != 'admin', deny, RBAC_ADMIN
+p, admin:access, not r.env.internal_ip, deny, R5_INTERNAL_IP
+p, admin:access, True, allow, RBAC_ADMIN
